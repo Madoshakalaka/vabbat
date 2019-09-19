@@ -15,6 +15,9 @@ pipenv-setup = "~=2.1"
 twine = "~=1.15"
 
 [packages]
+opencv-python = "*"
+imageio = "~=2.5"
+numpy = "~=1.17"
 
 [scripts]
 build = 'python setup.py sdist'
