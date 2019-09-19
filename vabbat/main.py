@@ -764,6 +764,7 @@ def cmd_entry(argv=sys.argv):
         description="Video Abstraction By Bounding Box And Trajectory"
     )
 
+    # todo: demo on arbitrary video. Remove average analysis
     parser.add_argument(
         "video", required=True, help="The video file you want to do abstraction on"
     )
