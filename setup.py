@@ -105,7 +105,6 @@ setup(
     #
     # Note that this is a string of words separated by whitespace, not a list.
     # keywords="computer vision",  # Optional
-
     # You can just specify package directories manually here if your project is
     # simple. Or you can use find_packages().
     #
@@ -163,7 +162,7 @@ setup(
     #
     # For example, the following would provide a command called `sample` which
     # executes the function `main` from this package when invoked:
-    entry_points={"console_scripts": ["vabbat=vabbat.main:cmd"]},  # Optional
+    entry_points={"console_scripts": ["vabbat=vabbat.main:cmd_entry"]},  # Optional
     # List additional URLs that are relevant to your project as a dict.
     #
     # This field corresponds to the "Project-URL" metadata fields:

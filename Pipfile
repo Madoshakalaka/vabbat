@@ -18,6 +18,7 @@ twine = "~=1.15"
 opencv-python = "*"
 imageio = "~=2.5"
 numpy = "~=1.17"
+opencv-contrib-python = "*"
 
 [scripts]
 build = 'python setup.py sdist'

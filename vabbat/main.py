@@ -21,52 +21,52 @@ import cv2
 from .drawer import getVelFrame, getBoxFrames, getNeighborFrames, getTrajectoryFrames
 
 
-def generateFreakingGIFs(carTrajectories):
-    video = cv2.VideoCapture("trafficVideo.mp4")
-    videoFrames = []
-
-    while 1:
-        ret, frame = video.read()
-        if ret:
-            videoFrames.append(frame)
-        else:
-            break
-    video.release()
-
-    allContours: List[Dict]
-    with open(os.path.join("cached", "contours.pickle"), "rb") as file:
-        allContours = pickle.load(file)
-
-    if not os.path.isdir("trajectories"):
-        print("trajectories directory not found, generating trajectories")
-        os.makedirs("trajectories")
-
-        for i, trajectory in enumerate(carTrajectories):
-            trajectoryFrames = []
-            print("progress: %d/%d" % (i, len(carTrajectories)))
-
-            for timeBox in trajectory:
-                frameID = timeBox[0]
-                box = timeBox[1:]
-
-                contour = allContours[frameID][box]
-
-                videoFrame = videoFrames[frameID]
-
-                mask = np.zeros((240, 426), dtype=np.uint8)
-                cv2.drawContours(mask, [contour], -1, 255, -1)
-
-                final = cv2.bitwise_and(videoFrame, videoFrame, mask=mask)
-
-                trajectoryFrames.append(final[:, :, ::-1])
-
-            imageio.mimsave(
-                os.path.join("trajectories", "%d.gif" % i),
-                trajectoryFrames,
-                duration=1 / 30,
-            )
-    else:
-        print("trajectories directory found, skipping trajectory generation")
+# def generateFreakingGIFs(carTrajectories):
+#     video = cv2.VideoCapture("trafficVideo.mp4")
+#     videoFrames = []
+#
+#     while 1:
+#         ret, frame = video.read()
+#         if ret:
+#             videoFrames.append(frame)
+#         else:
+#             break
+#     video.release()
+#
+#     allContours: List[Dict]
+#     with open(os.path.join("cached", "contours.pickle"), "rb") as file:
+#         allContours = pickle.load(file)
+#
+#     if not os.path.isdir("trajectories"):
+#         print("trajectories directory not found, generating trajectories")
+#         os.makedirs("trajectories")
+#
+#         for i, trajectory in enumerate(carTrajectories):
+#             trajectoryFrames = []
+#             print("progress: %d/%d" % (i, len(carTrajectories)))
+#
+#             for timeBox in trajectory:
+#                 frameID = timeBox[0]
+#                 box = timeBox[1:]
+#
+#                 contour = allContours[frameID][box]
+#
+#                 videoFrame = videoFrames[frameID]
+#
+#                 mask = np.zeros((240, 426), dtype=np.uint8)
+#                 cv2.drawContours(mask, [contour], -1, 255, -1)
+#
+#                 final = cv2.bitwise_and(videoFrame, videoFrame, mask=mask)
+#
+#                 trajectoryFrames.append(final[:, :, ::-1])
+#
+#             imageio.mimsave(
+#                 os.path.join("trajectories", "%d.gif" % i),
+#                 trajectoryFrames,
+#                 duration=1 / 30,
+#             )
+#     else:
+#         print("trajectories directory found, skipping trajectory generation")
 
 
 def loadContours() -> List[Dict]:
@@ -239,8 +239,8 @@ def create4PaneDemoFrame(panes, titles=("", "", "", ""), footnote=""):
     return demoFrame
 
 
-def demoOriginal() -> list:
-    video = cv2.VideoCapture("trafficVideo.mp4")
+def demoOriginal(video_file) -> list:
+    video = cv2.VideoCapture(video_file)
 
     width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -316,7 +316,7 @@ def fourPaneDemo(allBoxes, allNeighbors, trajectories, carTrajectories, videoFra
             break
 
 
-def twoPaneDemo(videoFrames, compressedFrames):
+def twoPaneDemo(videoFrames, compressedFrames, video_file):
     for i, frame in enumerate(videoFrames):
 
         demoFrame = np.full(DEMO_SHAPE, 255, dtype=np.uint8)
@@ -337,7 +337,7 @@ def twoPaneDemo(videoFrames, compressedFrames):
 
         frameDiff = "Frame count: %d -> %d" % (len(videoFrames), len(compressedFrames))
         sizeDiff = "Video size: %.1f MB -> %.1f MB" % (
-            os.path.getsize("trafficVideo.mp4") / 1000000,
+            os.path.getsize(video_file) / 1000000,
             os.path.getsize("compressed_video.mp4") / 1000000,
         )
         putTextWithCenter(demoFrame, "Result Comparison", (PADDING + w, PADDING), 1)
@@ -369,7 +369,7 @@ def main(args):
     if args.mode == "abstract":
         assert os.path.isfile(video_file), "Can not find specified video file"
 
-        allBoxes = processVideo()
+        allBoxes = processVideo(video_file)
         # allContours = loadContours()
 
         allNeighbors = computeAllNeighbors(allBoxes)
@@ -391,10 +391,10 @@ def main(args):
         combineAndWriteAbstraction(carTrajectories, len(allBoxes))
 
     else:  # demo
-        frames = demoOriginal()
+        frames = demoOriginal(video_file)
 
         # shows background subtraction progress and subtracted background
-        allBoxes = processVideo(demo=True)
+        allBoxes = processVideo(video_file, demo=True)
 
         backgroundFrame = loadBackground()
 
@@ -414,7 +414,7 @@ def main(args):
 
         fourPaneDemo(allBoxes, allNeighbors, trajectories, carTrajectories, frames)
 
-        twoPaneDemo(frames, compressedFrames)
+        twoPaneDemo(frames, compressedFrames, video_file)
 
 
 def getBlockVels(allBoxes, allNeighbors) -> List[List[List[float]]]:
@@ -601,7 +601,7 @@ def retrieveComputed() -> Tuple[Optional[List[List[Tuple]]], bool]:
 
 
 def processVideo(
-    demo=False
+    video_file, demo=False
 ) -> List[
     List[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]]
 ]:
@@ -624,9 +624,9 @@ def processVideo(
     else:
         return allBoxes
 
-    assert os.path.isfile("trafficVideo.mp4"), "trafficVideo.mp4 not found"
+    assert os.path.isfile(video_file), "video file not found"
 
-    video = cv2.VideoCapture("trafficVideo.mp4")
+    video = cv2.VideoCapture(video_file)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     fgbg = cv2.bgsegm.createBackgroundSubtractorGMG()
 
@@ -765,16 +765,14 @@ def cmd_entry(argv=sys.argv):
     )
 
     # todo: demo on arbitrary video. Remove average analysis
-    parser.add_argument(
-        "video", required=True, help="The video file you want to do abstraction on"
-    )
+    parser.add_argument("video", help="The video file you want to do abstraction on")
 
     parser.add_argument(
         "-m",
         "--mode",
         default="abstract",
         type=str,
-        required=True,
+        required=False,
         choices=("abstract", "demo"),
         help="'abstract' to do video abstraction. 'demo' to include show intermediate steps.",
     )

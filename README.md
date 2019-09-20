@@ -21,30 +21,11 @@ Video Abstraction By Bounding Box And Trajectory
 ## How to Use
 
 
-
-<!--
-
-add some help here 
-
-```python
-
-```
-
--->
-
-
 Pip creates command line executable entry point by default
 
 You should be able to run shell command `$ vabbat` anywhere.
 
-<!--
-add some command help here
-
-
-- `$ vabbat -i filename`
-    - output: `hello world`
-
--->
+- `$ vabbat -h` for more help
 
 - `$ vabbat -h` for more help
 
