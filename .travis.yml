@@ -1,76 +1,39 @@
 language: python
 dist: xenial
-# only intended for Linux and Mac jobs. Windows will overwrite install and script
 install: python3 -m pip install tox
 script: python3 -m tox
 stages:
-  - test
-  - "PYPI release"
+- test
+- PYPI release
 jobs:
   include:
-    # linux
-    - python: '3.7'
-    - python: '3.6'
-    # osx python 3.7
-    - name: "Python: 3.7"
-      os: osx
-      # xcode 11 image comes with python 3.7
-      osx_image: xcode11
-      # language: python will error
-      language: shell
+  - python: '3.7'
+  - python: '3.6'
+  - name: 'Python: 3.7'
+    os: osx
+    osx_image: xcode11
+    language: shell
+  - name: 'Python: 3.6'
+    os: osx
+    osx_image: xcode11
+    language: shell
+    addons:
+      homebrew:
+        update: true
+    before_install:
+      - pyenv install 3.5.2
+      - pyenv global 3.5.2
+  - stage: PYPI release
+    language: python
+    dist: xenial
+    install: pipenv install --dev pipenv-setup
+    script: pipenv-setup check
+    after_success: ''
+    deploy:
+      provider: pypi
+      user: Madoshakalaka
+      password:
+        secure: cmPnqpiihyUudGfvBII5PxzOZIXMaP4z2AEWCX0F8sXIOycPHrkh4MrUvk0elY05IsVEYn3QR9TQ35KUcHbrGpVnypULqaTFJMdMAeyDloKQLQ7M/gs3EtCJhrKO7r8GlNMlyCg0JLqU+TbqYNRdsaBQp+ejjJrtontXZm2gA6lIDznWdr/xpJ5G8ti60EsAJxyCUrEOoNtM5Y/X+MF82CXOlqoHaTihPXNl+FyGPBLTOvhBwQ8jaqb6rmI8S9HSan0wTUL8RH+lbhIRFbUMmXVe2lbM4CLBAxBGMW8oNEdzN9QEzUr5BdfM7/uHu42s7TWX8tCAL8MdPZPnegupyRWGmJZiL4SSyJB66T91/WdMI0ml9HbJjVQuyX5D3gQDkrxtRzpWNud8SAkad7iKQZEwg0dNn5y7eK48vMHEsnvj5AqsGHV5pU0CrLv9F/s3ePqu0P2Co2/uXTvTLXyi0yffRrIL+pYahaapVLdFhSPiayeOLmUoW4olo/XiQMdB9JNdiKtTqXgAdo6hJZ9vwhXXN/bWq/SdcGO2KlqOUB9Yr1qTbx5RQ4Ga8NM5J74z0kY+0q61lGLzZWFumRrVKOvslNtRjg/6riuQiMiWT2vb3xrodHbOS/XggjmSpqb1FKUrHFLVIkDlyPZdsNhABo+UOzObQN24avvVEyfbMww=
 
-
-    # osx python 3.6
-    - name: "Python: 3.6"
-      os: osx
-      osx_image: xcode11
-      language: shell
-      # switch to python 3.6
-      addons:
-        homebrew:
-          update: true
-      before_install:
-        - brew unlink python
-        - brew install --ignore-dependencies https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb
-        - brew switch python 3.6.5_1
-      # end switch
-
-
-
-    # windows python 3.7
-    - name: "Python: 3.7"
-      os: windows
-      # language: python will error
-      language: shell
-      # install python 3.7
-      before_install:
-        - choco install python --version 3.7.4
-        - python -m pip install --upgrade pip
-      install: python -m pip install tox
-      # On Windows, python3 does not exist
-      script: python -m tox
-      env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
-    # windows python 3.6
-    - name: "Python: 3.6"
-      os: windows
-      language: shell
-      before_install:
-        - choco install python --version 3.6.8
-        - python -m pip install --upgrade pip
-        - python -m pip install pipenv
-      install: python -m pip install tox
-      script: python -m tox
-      env: PATH=/c/Python36:/c/Python36/Scripts:$PATH
-    - stage: "PYPI release"
-      language: python
-      dist: xenial
-      install: pipenv install --dev pipenv-setup
-      script: pipenv-setup sync
-      after_success: ''
-      deploy:
-        provider: pypi
-        user: Madoshakalaka
-        password:
-          secure: # encrypted password
-        on:
-          tags: true
+      on:
+        tags: true

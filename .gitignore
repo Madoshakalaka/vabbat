@@ -4,3 +4,8 @@ dist
 __pycache__/
 pyckage-to-do.txt
 .tox
+tests/cached
+
+compressed_video.mp4
+demo_video.mp4
+cached

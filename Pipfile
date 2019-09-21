@@ -13,12 +13,13 @@ black = "==19.3b0"
 codecov = "~=2.0"
 pipenv-setup = "~=2.1"
 twine = "~=1.15"
+pytest-datadir = "~=1.3"
 
 [packages]
-opencv-python = "*"
 imageio = "~=2.5"
 numpy = "~=1.17"
-opencv-contrib-python = "*"
+opencv-python = "==3.4.5.20"
+opencv-contrib-python = "==3.4.5.20"
 
 [scripts]
 build = 'python setup.py sdist'

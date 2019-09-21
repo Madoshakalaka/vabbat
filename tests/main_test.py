@@ -1,9 +1,5 @@
 from vabbat.main import cmd_entry
 
 
-def test_cmd(capsys):
-    # cmd_entry([..., 'arg1', 'arg2'])
-    cmd_entry([...])
-    captured = capsys.readouterr()
-    assert captured.out.strip() == 'reserved command line entry for python package vabbat'
-    assert captured.err == ''
+def test_cmd(shared_datadir):
+    cmd_entry([..., str(shared_datadir / "trafficVideo.mp4")])

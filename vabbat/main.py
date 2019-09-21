@@ -1,72 +1,17 @@
 import argparse
-import sys
-
-
-import argparse
 import math
 import os
 import pickle
-from sys import stdout
-
-import imageio as imageio
-import numpy as np
+import sys
 from typing import List, Tuple, Optional, Dict
 
 import cv2
+import numpy as np
 
-# def getCarTrajectories(trajectories, vels):
-#     carTrajectories = []
-#     for trajectory in trajectories:
-#         getTrajectoryNormalityScore()
-from .drawer import getVelFrame, getBoxFrames, getNeighborFrames, getTrajectoryFrames
+from .drawer import getBoxFrames, getNeighborFrames, getTrajectoryFrames
 
 
-# def generateFreakingGIFs(carTrajectories):
-#     video = cv2.VideoCapture("trafficVideo.mp4")
-#     videoFrames = []
-#
-#     while 1:
-#         ret, frame = video.read()
-#         if ret:
-#             videoFrames.append(frame)
-#         else:
-#             break
-#     video.release()
-#
-#     allContours: List[Dict]
-#     with open(os.path.join("cached", "contours.pickle"), "rb") as file:
-#         allContours = pickle.load(file)
-#
-#     if not os.path.isdir("trajectories"):
-#         print("trajectories directory not found, generating trajectories")
-#         os.makedirs("trajectories")
-#
-#         for i, trajectory in enumerate(carTrajectories):
-#             trajectoryFrames = []
-#             print("progress: %d/%d" % (i, len(carTrajectories)))
-#
-#             for timeBox in trajectory:
-#                 frameID = timeBox[0]
-#                 box = timeBox[1:]
-#
-#                 contour = allContours[frameID][box]
-#
-#                 videoFrame = videoFrames[frameID]
-#
-#                 mask = np.zeros((240, 426), dtype=np.uint8)
-#                 cv2.drawContours(mask, [contour], -1, 255, -1)
-#
-#                 final = cv2.bitwise_and(videoFrame, videoFrame, mask=mask)
-#
-#                 trajectoryFrames.append(final[:, :, ::-1])
-#
-#             imageio.mimsave(
-#                 os.path.join("trajectories", "%d.gif" % i),
-#                 trajectoryFrames,
-#                 duration=1 / 30,
-#             )
-#     else:
-#         print("trajectories directory found, skipping trajectory generation")
+DEMO_FRAMES = []
 
 
 def loadContours() -> List[Dict]:
@@ -98,7 +43,7 @@ def overlaps(box1, box2) -> bool:
     return True
 
 
-def combineAndWriteAbstraction(carTrajectories, length) -> list:
+def combineAndWriteAbstraction(carTrajectories, length, frame_rate) -> list:
     mergedBoxes = [[] for _ in range(length)]
 
     background = loadBackground()
@@ -130,10 +75,9 @@ def combineAndWriteAbstraction(carTrajectories, length) -> list:
                     # print(tBox)
 
                     if overlaps(mBox, tBox):
-                        # print("y")
+
                         frameIntersects = True
                         break
-                    # print()
 
                 if frameIntersects:
                     allFramesCompatible = False
@@ -154,13 +98,16 @@ def combineAndWriteAbstraction(carTrajectories, length) -> list:
     height, width, _ = newFrames[0].shape
 
     video = cv2.VideoWriter(
-        "compressed_video.mp4", cv2.VideoWriter_fourcc(*"mp4v"), 20.0, (width, height)
+        "compressed_video.mp4",
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        frame_rate,
+        (width, height),
     )
     for frame in newFrames[: videoEndInd + 1]:
         # cv2.imshow('lol', frame)
         # cv2.waitKey()
         video.write(frame)
-
+    video.release()
     return newFrames[: videoEndInd + 1]
 
 
@@ -184,17 +131,20 @@ def putTextWithCenter(demoFrame, text, center: Tuple[int, int], font_scale: floa
 
 # ALL (ROW, COL)
 PADDING = 35
-DEMO_SHAPE = (240 * 2 + PADDING * 4, 426 * 2 + PADDING * 4, 3)
-CENTER = (240 + 2 * PADDING, 426 + 2 * PADDING)
+DEMO_SHAPE = [0 * 2 + PADDING * 4, 0 * 2 + PADDING * 4, 3]
+CENTER = [0 + 2 * PADDING, 0 + 2 * PADDING]
 
 
 def createCenteredDemoFrame(frame, title="", footnote=""):
     demoFrame = np.full(DEMO_SHAPE, 255, dtype=np.uint8)
     half_h = frame.shape[0] // 2
     half_w = frame.shape[1] // 2
+
     demoFrame[
-        CENTER[0] - half_h : CENTER[0] + half_h, CENTER[1] - half_w : CENTER[1] + half_w
+        CENTER[0] - half_h : CENTER[0] - half_h + frame.shape[0],
+        CENTER[1] - half_w : CENTER[1] - half_w + frame.shape[1],
     ] = frame
+
     if title:
         putTextWithCenter(
             demoFrame, title, (CENTER[1], CENTER[0] - half_h - PADDING // 2), 1.5
@@ -261,6 +211,7 @@ def demoOriginal(video_file) -> list:
         frames[0], "Original Video", "paused, any key to play"
     )
     cv2.imshow("demo", demoFrame)
+    DEMO_FRAMES.append(demoFrame)
     cv2.waitKey()
 
     for frame in frames[1:]:
@@ -270,6 +221,7 @@ def demoOriginal(video_file) -> list:
         )
 
         cv2.imshow("demo", demoFrame)
+        DEMO_FRAMES.append(demoFrame)
         k = cv2.waitKey(1000 // 30)
         if k & 0xFF == 27:
             break
@@ -278,21 +230,24 @@ def demoOriginal(video_file) -> list:
         frames[0], "Original Video", "any key to proceed"
     )
     cv2.imshow("demo", demoFrame)
+    DEMO_FRAMES.append(demoFrame)
     cv2.waitKey()
 
     return frames
 
 
-def fourPaneDemo(allBoxes, allNeighbors, trajectories, carTrajectories, videoFrames):
+def trajectory_algorithm_four_pane_demo(
+    allBoxes, allNeighbors, trajectories, carTrajectories, videoFrames, length
+):
     boxFrames = getBoxFrames(allBoxes, videoFrames)
     neighborFrames = getNeighborFrames(allBoxes, allNeighbors, videoFrames)
     trajectoryFrames = getTrajectoryFrames(trajectories, videoFrames)
     carTrajectoryFrames = getTrajectoryFrames(carTrajectories, videoFrames)
 
-    # 1228th frame is a good sample
+    # select frame from the middle to demo
 
     demoFrame = None
-    for i in range(1228, len(videoFrames)):
+    for i in range(int(length * 0.555), len(videoFrames)):
         demoFrame = create4PaneDemoFrame(
             [
                 boxFrames[i],
@@ -310,13 +265,13 @@ def fourPaneDemo(allBoxes, allNeighbors, trajectories, carTrajectories, videoFra
         )
 
         cv2.imshow("demo", demoFrame)
-
+        DEMO_FRAMES.append(demoFrame)
         k = cv2.waitKey() & 0xFF
         if k == 27:
             break
 
 
-def twoPaneDemo(videoFrames, compressedFrames, video_file):
+def twoPaneDemo(videoFrames, compressedFrames, video_file, width, height):
     for i, frame in enumerate(videoFrames):
 
         demoFrame = np.full(DEMO_SHAPE, 255, dtype=np.uint8)
@@ -329,7 +284,7 @@ def twoPaneDemo(videoFrames, compressedFrames, video_file):
         if i < len(compressedFrames):
             rightsideFrame = compressedFrames[i]
         else:
-            rightsideFrame = np.zeros((240, 426, 3), dtype=np.uint8)
+            rightsideFrame = np.zeros((height, width, 3), dtype=np.uint8)
 
         demoFrame[
             PADDING * 3 + h : PADDING * 3 + 2 * h, PADDING * 3 + w : PADDING * 3 + 2 * w
@@ -358,6 +313,7 @@ def twoPaneDemo(videoFrames, compressedFrames, video_file):
         )
 
         cv2.imshow("demo", demoFrame)
+        DEMO_FRAMES.append(demoFrame)
         k = cv2.waitKey(1000 // 30) & 0xFF
         if k == 27:
             break
@@ -365,11 +321,28 @@ def twoPaneDemo(videoFrames, compressedFrames, video_file):
 
 
 def main(args):
-    video_file = args.video
-    if args.mode == "abstract":
-        assert os.path.isfile(video_file), "Can not find specified video file"
+    global DEMO_SHAPE, CENTER
 
-        allBoxes = processVideo(video_file)
+    video_file = args.video
+
+    assert os.path.isfile(video_file), "Can not find specified video file"
+
+    video = cv2.VideoCapture(video_file)
+
+    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    length = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_rate = video.get(cv2.CAP_PROP_FPS)
+
+    DEMO_SHAPE[0] = height * 2 + PADDING * 4
+    DEMO_SHAPE[1] = width * 2 + PADDING * 4
+
+    CENTER[0] = height + 2 * PADDING
+    CENTER[1] = width + 2 * PADDING
+
+    if args.mode == "abstract":
+
+        allBoxes = processVideo(video_file, width, height, length)
         # allContours = loadContours()
 
         allNeighbors = computeAllNeighbors(allBoxes)
@@ -388,95 +361,39 @@ def main(args):
         # get average velocity across the video
         # vels = getBlockVels(allBoxes, allNeighbors)
 
-        combineAndWriteAbstraction(carTrajectories, len(allBoxes))
+        combineAndWriteAbstraction(carTrajectories, len(allBoxes), frame_rate)
 
     else:  # demo
         frames = demoOriginal(video_file)
 
         # shows background subtraction progress and subtracted background
-        allBoxes = processVideo(video_file, demo=True)
-
-        backgroundFrame = loadBackground()
+        allBoxes = processVideo(video_file, width, height, length, demo=True)
 
         allNeighbors = computeAllNeighbors(allBoxes)
-
-        demoFrame = createCenteredDemoFrame(
-            getVelFrame(), "Average velocity", "press any key to continue"
-        )
-        cv2.imshow("demo", demoFrame)
-        cv2.waitKey()
 
         trajectories = getTrajectories(allBoxes, allNeighbors)
 
         bound = 30
         carTrajectories = list(filter(lambda x: len(x) > bound, trajectories))
-        compressedFrames = combineAndWriteAbstraction(carTrajectories, len(allBoxes))
+        compressedFrames = combineAndWriteAbstraction(
+            carTrajectories, len(allBoxes), frame_rate
+        )
 
-        fourPaneDemo(allBoxes, allNeighbors, trajectories, carTrajectories, frames)
+        trajectory_algorithm_four_pane_demo(
+            allBoxes, allNeighbors, trajectories, carTrajectories, frames, length
+        )
 
-        twoPaneDemo(frames, compressedFrames, video_file)
+        twoPaneDemo(frames, compressedFrames, video_file, width, height)
 
-
-def getBlockVels(allBoxes, allNeighbors) -> List[List[List[float]]]:
-    """
-    divide the frames into 20x20 = 400 square blocks, compute the average velocity vector on each block
-
-    :param allBoxes:
-    """
-
-    blockWidth = 426 / 20
-    blockHeight = 240 / 20
-
-    movingDir = [[[] for _ in range(20)] for _ in range(20)]
-    counters = [[0 for _ in range(20)] for _ in range(20)]
-
-    # block coordinate system, (a, b) are column, row specifically
-    for frameInd in range(len(allBoxes) - 1):
-        frameBoxes = allBoxes[frameInd]
-
-        for boxInd, box in enumerate(frameBoxes):
-            futureNeighborBoxInds = allNeighbors[frameInd][boxInd]
-
-            for futureNeighborBoxInd in futureNeighborBoxInds:
-                futureNeighborBox = allBoxes[frameInd + 1][futureNeighborBoxInd]
-                for cornerInd, corner in enumerate(futureNeighborBox):
-                    blockXInd = min(int(corner[0] // blockWidth), 19)
-                    blockYInd = min(int(corner[1] // blockHeight), 19)
-                    movingDir[blockXInd][blockYInd].append(
-                        np.array(
-                            [
-                                corner[0] - box[cornerInd][0],
-                                corner[1] - box[cornerInd][1],
-                            ]
-                        )
-                    )
-                    # movingDir[blockXInd][blockYInd][0] += corner[0] - box[cornerInd][0]
-                    # movingDir[blockXInd][blockYInd][1] += corner[1] - box[cornerInd][1]
-                    counters[blockXInd][blockYInd] += 1
-
-    for i in range(20):
-        for j in range(20):
-            # some filtering for this specific case
-            if 3 <= len(movingDir[i][j]) and np.std(movingDir[i][j]) < 20:
-                movingDir[i][j] = sum(movingDir[i][j]) / counters[i][j]
-                # print(movingDir[i][j])
-            else:
-                movingDir[i][j] = np.array([0, 0])
-                # print(movingDir[i][j])
-            # if counters[i][j] >= 10:
-            #     movingDir[i][j] = sum(movingDir[i][j]) / counters[i][j]
-            #     # movingDir[i][j][0] /= counters[i][j]
-            #     # movingDir[i][j][1] /= counters[i][j]
-            # else:
-            #     movingDir[i][j] = np.array([0, 0])
-            #     # movingDir[i][j][0] = 0
-            #     # movingDir[i][j][1] = 0
-
-    return movingDir
-
-
-# def pointDis(v1, v2):
-#     return math.sqrt((v1[0]-v2[0])**2 + (v1[1] - v2[1])**2)
+        demo_video = cv2.VideoWriter(
+            "demo_video.mp4",
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            frame_rate,
+            (DEMO_SHAPE[1], DEMO_SHAPE[0]),
+        )
+        for frame in DEMO_FRAMES:
+            demo_video.write(frame)
+        demo_video.release()
 
 
 def computeBoxMSE(box1, box2):
@@ -487,7 +404,7 @@ def computeBoxMSE(box1, box2):
     return math.sqrt(s) / 4
 
 
-def computeMinNeighborForBox(box, nextFrameBoxes, bound) -> List[int]:
+def computeMinNeighborForBox(box, nextFrameBoxes, bound, neighbor_scores) -> List[int]:
     """
     error := mse(corresponding vertex distance), boxes within an error of bound will be considered neighbors
 
@@ -515,37 +432,35 @@ def computeMinNeighborForBox(box, nextFrameBoxes, bound) -> List[int]:
                 minNeighbor = i
 
     if minNeighbor is not None:
-        return [minNeighbor]
-    else:
-        return []
+        if minNeighbor in neighbor_scores:
+            if minMSE < neighbor_scores[minNeighbor]:
+                neighbor_scores[minNeighbor] = minMSE
+                return [minNeighbor]
+        else:
+            neighbor_scores[minNeighbor] = minMSE
+            return [minNeighbor]
+
+    return []
 
 
-# empirical bound: 30
+# empirical bound: 60
 def computeAllNeighbors(allBoxes, bound=60) -> List[List[List[int]]]:
     allNeighbors = []
 
     for i in range(len(allBoxes) - 1):
         currentFrameBoxes, nextFrameBoxes = allBoxes[i : i + 2]
 
-        # print(allBoxes[i:i + 2])
-        # if nextFrameBoxes:
-        #     print(nextFrameBoxes[0])
-
         frameNeighbors = []
+
+        neighbor_scores = {}
         for box in currentFrameBoxes:
-            boxNeighbors = computeMinNeighborForBox(box, nextFrameBoxes, bound)
-            frameNeighbors.append(boxNeighbors)
+            boxNeighbor = computeMinNeighborForBox(
+                box, nextFrameBoxes, bound, neighbor_scores
+            )
+            frameNeighbors.append(boxNeighbor)
         allNeighbors.append(frameNeighbors)
 
     return allNeighbors
-
-
-def getMovementScore(frameInd, boxInd, allBoxes, allNeighbors, vels):
-    box = allBoxes[boxInd]
-    futureFrameBox = allBoxes[allNeighbors[frameInd][boxInd]]
-    total = 0
-    while futureFrameBox:
-        pass
 
 
 def getTrajectories(allBoxes, allNeighbors):
@@ -575,10 +490,6 @@ def getTrajectories(allBoxes, allNeighbors):
     return trajectories
 
 
-def roadAndSizeDetection(boxes):
-    return None, None
-
-
 def retrieveComputed() -> Tuple[Optional[List[List[Tuple]]], bool]:
     file = os.path.join("cached", "trafficVideoBoxes.pickle")
     contourFile = os.path.join("cached", "contours.pickle")
@@ -601,7 +512,7 @@ def retrieveComputed() -> Tuple[Optional[List[List[Tuple]]], bool]:
 
 
 def processVideo(
-    video_file, demo=False
+    video_file, width, height, length, demo=False
 ) -> List[
     List[Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int], Tuple[int, int]]]
 ]:
@@ -613,7 +524,6 @@ def processVideo(
 
     :return: boxes
     """
-    demoFrame = np.full((240 * 2, 426 * 2, 3), 255, dtype=np.uint8)
 
     allContrours = []
 
@@ -634,11 +544,16 @@ def processVideo(
     height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
     length = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 
+    demoFrame = np.full((height * 2, width * 2, 3), 255, dtype=np.uint8)
+
     boxImages = dict()
 
     backgroundFrequencies = [[dict() for _ in range(width)] for _ in range(height)]
-    background = np.full((240, 426, 3), 255, dtype=np.uint8)
+    background = np.full((height, width, 3), 255, dtype=np.uint8)
     counter = 0
+
+    sampling_min = int(0.136 * length)
+    sampling_max = int(0.2 * length)
 
     while 1:
         ret, frame = video.read()
@@ -646,29 +561,6 @@ def processVideo(
         print(
             "Video processing progress: %d\r" % ((counter + 1) * 100 / length), end=""
         )
-        if demo:
-            footnote = ""
-            if 300 <= counter <= 320:
-                footnote = "Sampling background..."
-
-                for r in range(height):
-                    for c in range(width):
-                        colorFreqs = tuple(backgroundFrequencies[r][c].items())
-                        if colorFreqs:
-                            maxP = max(colorFreqs)[0]
-                            background[r][c] = maxP
-
-                showingFrame = background
-            else:
-                showingFrame = np.full((240, 426, 3), 255, dtype=np.uint8)
-
-            demoFrame = createCenteredDemoFrame(
-                showingFrame,
-                "Processing Video: %d%%" % ((counter + 1) * 100 / length),
-                footnote,
-            )
-            cv2.imshow("demo", demoFrame)
-            cv2.waitKey(1)
 
         if ret:
             frameBoxes = []
@@ -677,18 +569,23 @@ def processVideo(
             fgmask = fgbg.apply(frame)
             fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
             _, th1 = cv2.threshold(fgmask, 127, 255, cv2.THRESH_BINARY)
-            _, contours, _ = cv2.findContours(
+            a, contours, *_ = cv2.findContours(
                 th1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
             )  # showing the masked result
-
             # if counter // 50 == 0:
-            if 300 <= counter <= 320:
-                # stdout.flush()
+            if sampling_min <= counter <= sampling_max:
+
                 bgmask = np.logical_not(fgmask)
 
                 # cv2.waitKey()
                 bg = cv2.bitwise_and(frame, frame, mask=bgmask.astype(np.uint8))
-                # cv2.imshow("lul", bg)
+                if demo:
+                    demoFrame = createCenteredDemoFrame(
+                        bg,
+                        "Processing Video: %d%%" % ((counter + 1) * 100 / length),
+                        "sampling background",
+                    )
+
                 for r in range(height):
                     for c in range(width):
                         if bgmask[r][c]:
@@ -698,6 +595,18 @@ def processVideo(
                                 k[p] += 1
                             else:
                                 k[p] = 1
+            elif demo:
+                showingFrame = np.full((height, width, 3), 255, dtype=np.uint8)
+
+                demoFrame = createCenteredDemoFrame(
+                    showingFrame,
+                    "Processing Video: %d%%" % ((counter + 1) * 100 / length),
+                    "",
+                )
+            if demo:
+                cv2.imshow("demo", demoFrame)
+                DEMO_FRAMES.append(demoFrame)
+                cv2.waitKey(1)
 
             for i in range(len(contours)):
                 if len(contours[i]) >= 5:
@@ -721,13 +630,16 @@ def processVideo(
 
     video.release()
 
-    if not demo:
-        for r in range(height):
-            for c in range(width):
+    for r in range(height):
+        for c in range(width):
+            px = tuple(backgroundFrequencies[r][c].items())
+            if px:
                 maxP = max(
                     tuple(backgroundFrequencies[r][c].items()), key=lambda x: x[1]
                 )[0]
-                background[r][c] = maxP
+            else:
+                maxP = (255, 255, 255)
+            background[r][c] = maxP
 
     if caching:
         if not os.path.exists("cached"):

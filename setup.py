@@ -23,7 +23,9 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
 
+
 setup(
+    dependency_links=[],
     # This is the name of your project. The first time you publish this
     # package, this name will be registered for you. It will determine how
     # users can install this project, e.g.:
@@ -127,7 +129,13 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=[],  # Optional
+    install_requires=[
+        "imageio==2.5.0",
+        "numpy==1.17.2",
+        "opencv-python==3.4.5.20",
+        "opencv-contrib-python==3.4.5.20",
+        "pillow==6.1.0",
+    ],  # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
     # syntax, for example:
