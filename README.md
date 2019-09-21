@@ -45,3 +45,8 @@ For a demonstration, you can download [this test video](https://github.com/Mados
 in case the command does not work (e.g. on windows when <python_dir>/Scripts is not in system path). Use the package entry:
 
 `> python -m vabbat`
+
+## Limitations
+
+- The camera should be stationary
+- The video should be a top down view without cars blocking line of sight from other cars.
