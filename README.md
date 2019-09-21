@@ -38,7 +38,7 @@ For a demonstration, you can download [this test video](https://github.com/Mados
 
 - `$ vabbat trafficVideo.mp4` which produces `compressed_video.mp4` under current directory
 
-- `$ vabbat trafficVideo.mp4 --mode demo` which presents an interactive 
+- `$ vabbat trafficVideo.mp4 --mode demo` which presents an interactive demonstration
 
 - `$ vabbat -h` for more help
 
