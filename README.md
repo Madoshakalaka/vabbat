@@ -15,17 +15,30 @@
 <!--You picture won't show on pypi if you use relative path.-->
 <!--If you want to add any image, please add the image to readme_assets folder and add the filename as below-->
 <!--![some show case picture](https://raw.githubusercontent.com/Madoshakalaka/vabbat/master/readme_assets/showcasePicture.png)-->
-Video Abstraction By Bounding Box And Trajectory
+
+Traffic video compression using background subtraction and bounding box matching.
+
+See this amazing [youtube video demo](https://youtu.be/Uqwgp-7tqpA?t=181)
+
+![steps](https://raw.githubusercontent.com/Madoshakalaka/vabbat/master/readme_assets/steps.png)
+
+![result](https://raw.githubusercontent.com/Madoshakalaka/vabbat/master/readme_assets/result.png)
+
+
+
 
 
 ## How to Use
-
 
 Pip creates command line executable entry point by default
 
 You should be able to run shell command `$ vabbat` anywhere.
 
-- `$ vabbat -h` for more help
+For a demonstration, you can download [this test video](https://github.com/Madoshakalaka/vabbat/blob/master/tests/data/trafficVideo.mp4?raw=true) and run:
+
+- `$ vabbat trafficVideo.mp4` which produces `compressed_video.mp4` under current directory
+
+- `$ vabbat trafficVideo.mp4 --mode demo` which presents an interactive 
 
 - `$ vabbat -h` for more help
 
