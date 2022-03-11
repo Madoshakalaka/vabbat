@@ -134,7 +134,7 @@ setup(
         "numpy==1.17.2",
         "opencv-python==3.4.5.20",
         "opencv-contrib-python==3.4.5.20",
-        "pillow==6.1.0",
+        "pillow==9.0.1",
     ],  # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
